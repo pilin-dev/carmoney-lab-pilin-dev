@@ -28,8 +28,36 @@ Docker'а на ноутбуке нет? Тогда локально работа
 | `make test` | прогнать PHPUnit |
 | `make lint` | проверить синтаксис PHP |
 | `make down` | остановить сервис |
+| `make ps` | состояние контейнеров |
+| `make logs` | логи backend'а |
 | `make seed` | перезалить учебные данные |
 | `make help` | список всех команд |
+
+## Как проверить, что сервис жив
+
+После `make up` стоит убедиться в трёх вещах: контейнеры поднялись, HTTP-эндпоинт
+отвечает, и база го��ова принимать запросы.
+
+```bash
+make ps                                            # оба сервиса в состоянии running/healthy
+curl -fsS http://localhost:8080/health             # {"status":"ok"} — backend отвечает
+curl -fsS -X POST http://localhost:8080/api/ltv \  # боевая проверка: реальный расчёт LTV
+  -H 'Content-Type: application/json' \
+  -d '{"vin":"XTA21099998765432","year":2019,"mileage":84000,
+       "market_value":900000,"requested_amount":450000,"term_months":24}'
+```
+
+Если порт `8080` занят или стенд выдал свой, замените его на значение `APP_PORT` —
+оно же попадёт в адрес `http://localhost:${APP_PORT}/`.
+
+Что делать, когда что-то не так:
+
+| Симптом | Что проверить | Куда смотреть |
+|---|---|---|
+| `make ps` показывает `Exit` или `Restarting` | контейнер упал при старте | `make logs` — там весь stdout backend'а |
+| `/health` отвечает, а `/api/ltv` — 500 | backend жив, но не видит базу | `make logs` и статус `db` в `make ps` (`healthy` появится через несколько секунд после `make up`) |
+| `curl` пишет `Connection refused` | сервис ещё не поднялся или порт другой | подождите пару секунд и повторите; п��оверьте `echo $APP_PORT` |
+| `make up` ругается на занятый порт | другой процесс слушает 8080/3307 | `APP_PORT=8090 make up` (и аналогично `DB_PORT`) |
 
 ## API
 
